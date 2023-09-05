@@ -1,10 +1,12 @@
+CFLAGS=-Wall
+
 all: main.o mpu6050.o
-	${CC} $(CFLAGS) main.o mpu6050.o -o balbot $(LDFLAGS)
+	${CC} $(CFLAGS) $^ -o balbot $(LDFLAGS)
 test: main.o mpu6050.o
-	${CC} main.o mpu6050.o -o balbot -lpigpio -lm
-main.o: main.c
-	${CC} -c main.c
-mpu6050.o: mpu6050.c mpu6050.h
-	${CC} -c mpu6050.c
+	${CC} $(CFLAGS) $^ -o balbot -lpigpio -lm
+main.o: src/main.c
+	${CC} $(CFLAGS) -c $<
+mpu6050.o: src/mpu6050.c src/mpu6050.h
+	${CC} $(CFLAGS) -c $<
 clean:
 	rm -f main.o mpu6050.o balbot
