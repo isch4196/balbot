@@ -69,7 +69,7 @@
 #define GYRO_Z_OUT_H	12
 #define GYRO_Z_OUT_L	13
 
-int mpu_init(void);
+int mpu6050_init(void);
 
 #endif
 

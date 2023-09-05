@@ -39,9 +39,9 @@ int main(void)
   }
   signal(SIGINT, sigint_handler); // register after gpioInitialise to override pigpio sig handler
   
-  i2c_handle = mpu_init();
+  i2c_handle = mpu6050_init();
   if (i2c_handle < 0 ) {
-    printf("mpu_init fail: %d\n", ret);
+    printf("mpu6050_init fail: %d\n", ret);
   }
 
   // main code
@@ -122,6 +122,5 @@ int main(void)
 
 void sigint_handler(int signum)
 {
-  
   stop = 1;
 }
