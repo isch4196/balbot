@@ -1,6 +1,7 @@
 /**
- * mpu6050.c: A small non-comprehensive driver for mpu6050. It only implements
- * what is needed for this specific project.
+ * mpu6050.c: A small non-comprehensive driver for mpu6050, along with
+ * some application code. It only implements what is needed for this
+ * specific project.
  */
 
 #include <stdio.h>

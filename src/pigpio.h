@@ -581,7 +581,8 @@ typedef void (*gpioGetSamplesFuncEx_t) (const gpioSample_t *samples,
                                         int                 numSamples,
                                         void               *userdata);
 
-#warning changed from *(gpioThreadFunc_t)
+// bookmark for change below to avoid warning on compilation
+//#warning changed from *(gpioThreadFunc_t)
 typedef void (*gpioThreadFunc_t) (void *);
 
 
