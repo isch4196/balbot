@@ -7,14 +7,7 @@
 #include <pigpio.h>
 
 #include "mpu6050.h"
-
-#define DEBUG		0
-
-#define LOOP_TIME_MS	50
-#define LOOP_TIME_US	(LOOP_TIME_MS*1000)
-#define LOOP_TIME_S	(LOOP_TIME_MS/1000.0)
-
-#define RAD_TO_DEG	57.298578
+#include "common.h"
 
 static volatile sig_atomic_t stop;
 

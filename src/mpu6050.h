@@ -69,6 +69,9 @@
 #define GYRO_Z_OUT_H	12
 #define GYRO_Z_OUT_L	13
 
+// Application Code Macros
+#define RAD_TO_DEG	57.298578
+
 int mpu6050_init(void);
 
 #endif
