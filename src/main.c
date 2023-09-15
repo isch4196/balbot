@@ -10,6 +10,9 @@
 #include "common.h"
 #include "PID-library/pid.h"
 
+#define MOTOR1_CTL_PIN 18
+#define MOTOR1_DIR_PIN 24
+
 static volatile sig_atomic_t stop;
 
 void sigint_handler(int signum);
@@ -34,7 +37,7 @@ int main(void)
     }
     signal(SIGINT, sigint_handler); // register after gpioInitialise to override pigpio sig handler
   
-    gpioSetMode(24, PI_OUTPUT); // Stepper Motor 1 Direction
+    gpioSetMode(MOTOR1_DIR_PIN, PI_OUTPUT); // Stepper Motor 1 Direction
     i2c_handle = mpu6050_init();
     if (i2c_handle < 0 ) {
 	printf("mpu6050_init fail: %d\n", ret);
@@ -68,10 +71,10 @@ int main(void)
     
 	printf("outputs: %f %f %f %d\n", y_gyro_ang, x_acc_ang, angle, abs((int)(pid_out)));
 	unsigned char stepper_dir = (pid_out >= 0) ? 1:0;
-	gpioWrite(24, stepper_dir);
+	gpioWrite(MOTOR1_DIR_PIN, stepper_dir);
     
 	// use angle to control the motor
-	gpioHardwarePWM(18, abs((int)(pid_out)), 500000);
+	gpioHardwarePWM(MOTOR1_CTL_PIN, abs((int)(pid_out)), 500000);
     
 	usleep(LOOP_TIME_US);
     }
