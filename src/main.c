@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdint.h>
+#include <stdlib.h>
 #include <time.h>
 #include <math.h>
 #include <unistd.h>
@@ -12,6 +13,8 @@
 
 #define MOTOR1_CTL_PIN 18
 #define MOTOR1_DIR_PIN 24
+
+#define MOTOR2_DIR_PIN 12
 
 static volatile sig_atomic_t stop;
 
