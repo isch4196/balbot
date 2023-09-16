@@ -14,7 +14,8 @@
 #define MOTOR1_CTL_PIN 18
 #define MOTOR1_DIR_PIN 24
 
-#define MOTOR2_DIR_PIN 12
+#define MOTOR2_CTL_PIN 12
+#define MOTOR2_DIR_PIN 23
 
 static volatile sig_atomic_t stop;
 
@@ -41,6 +42,7 @@ int main(void)
     signal(SIGINT, sigint_handler); // register after gpioInitialise to override pigpio sig handler
   
     gpioSetMode(MOTOR1_DIR_PIN, PI_OUTPUT); // Stepper Motor 1 Direction
+    gpioSetMode(MOTOR2_DIR_PIN, PI_OUTPUT); // Stepper Motor 2 Direction
     i2c_handle = mpu6050_init();
     if (i2c_handle < 0 ) {
 	printf("mpu6050_init fail: %d\n", ret);
@@ -78,6 +80,7 @@ int main(void)
     
 	// use angle to control the motor
 	gpioHardwarePWM(MOTOR1_CTL_PIN, abs((int)(pid_out)), 500000);
+	gpioHardwarePWM(MOTOR2_CTL_PIN, abs((int)(pid_out)), 500000);
     
 	usleep(LOOP_TIME_US);
     }
