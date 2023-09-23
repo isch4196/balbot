@@ -37,21 +37,23 @@ int main(void)
     ret = gpioInitialise();
     if (ret == PI_INIT_FAILED) {
 	printf("gpioInitialise failed\n");
-	return 1;
+	return -1;
     }
     signal(SIGINT, sigint_handler); // register after gpioInitialise to override pigpio sig handler
   
     gpioSetMode(MOTOR1_DIR_PIN, PI_OUTPUT); // Stepper Motor 1 Direction
     gpioSetMode(MOTOR2_DIR_PIN, PI_OUTPUT); // Stepper Motor 2 Direction
+
     i2c_handle = mpu6050_init();
     if (i2c_handle < 0 ) {
-	printf("mpu6050_init fail: %d\n", ret);
+	printf("mpu6050_init fail: %d\n", i2c_handle);
+	return -1;
     }
 
-    PID(&TPID, &angle, &pid_out, &angle_set_pt, 50, 0, 0, _PID_P_ON_E, _PID_CD_DIRECT);
+    PID(&TPID, &angle, &pid_out, &angle_set_pt, 120, 8, 5, _PID_P_ON_E, _PID_CD_REVERSE);
     PID_SetMode(&TPID, _PID_MODE_AUTOMATIC);
     PID_SetSampleTime(&TPID, LOOP_TIME_MS);
-    PID_SetOutputLimits(&TPID, -2000, 2000); 
+    PID_SetOutputLimits(&TPID, -10000, 10000); 
   
     //main code
     while(!stop) {
@@ -61,30 +63,36 @@ int main(void)
 	}
 
 	// may not need all of these variables
-	x_acc_val = (acc_gyro_buf[ACCEL_X_OUT_L] | (acc_gyro_buf[ACCEL_X_OUT_H] << 8)) + MPU6050_ACCEL_X_OFFSET;
+	//x_acc_val = (acc_gyro_buf[ACCEL_X_OUT_L] | (acc_gyro_buf[ACCEL_X_OUT_H] << 8)) + MPU6050_ACCEL_X_OFFSET;
 	y_acc_val = (acc_gyro_buf[ACCEL_Y_OUT_L] | (acc_gyro_buf[ACCEL_Y_OUT_H] << 8)) + MPU6050_ACCEL_Y_OFFSET;
 	z_acc_val = (acc_gyro_buf[ACCEL_Z_OUT_L] | (acc_gyro_buf[ACCEL_Z_OUT_H] << 8)) + MPU6050_ACCEL_Z_OFFSET;
-	temp = (acc_gyro_buf[TEMP_L] | (acc_gyro_buf[TEMP_H] << 8));
+	//temp = (acc_gyro_buf[TEMP_L] | (acc_gyro_buf[TEMP_H] << 8));
 	x_gyro_val = (acc_gyro_buf[GYRO_X_OUT_L] | (acc_gyro_buf[GYRO_X_OUT_H] << 8)) + MPU6050_GYRO_X_OFFSET;
-	y_gyro_val = (acc_gyro_buf[GYRO_Y_OUT_L] | (acc_gyro_buf[GYRO_Y_OUT_H] << 8)) + MPU6050_GYRO_Y_OFFSET;
-	z_gyro_val = (acc_gyro_buf[GYRO_Z_OUT_L] | (acc_gyro_buf[GYRO_Z_OUT_H] << 8)) + MPU6050_GYRO_Z_OFFSET;
+	/* y_gyro_val = (acc_gyro_buf[GYRO_Y_OUT_L] | (acc_gyro_buf[GYRO_Y_OUT_H] << 8)) + MPU6050_GYRO_Y_OFFSET; */
+	/* z_gyro_val = (acc_gyro_buf[GYRO_Z_OUT_L] | (acc_gyro_buf[GYRO_Z_OUT_H] << 8)) + MPU6050_GYRO_Z_OFFSET; */
 
 	y_gyro_ang += (x_gyro_val/65.5)*LOOP_TIME_S;
+	//printf("outputs: %d %d\n", y_acc_val, z_acc_val);
 	x_acc_ang = atan2(y_acc_val/8192.0, z_acc_val/8192.0)*RAD_TO_DEG;
-	angle = (0.95 * y_gyro_ang) + (0.05 * x_acc_ang);
+	angle = (0.98 * y_gyro_ang) + (0.02 * x_acc_ang);
+	if(abs(angle) >= 45) {
+	  stop = 1;
+	}
 	PID_Compute(&TPID);
     
-	printf("outputs: %f %f %f %d\n", y_gyro_ang, x_acc_ang, angle, abs((int)(pid_out)));
+	printf("outputs: %f %f %f %d %d\n", y_gyro_ang, x_acc_ang, angle, x_gyro_val, abs((int)(pid_out)));
 	unsigned char stepper_dir = (pid_out >= 0) ? 1:0;
 	gpioWrite(MOTOR1_DIR_PIN, stepper_dir);
+	gpioWrite(MOTOR2_DIR_PIN, !stepper_dir);
     
 	// use angle to control the motor
-	gpioHardwarePWM(MOTOR1_CTL_PIN, abs((int)(pid_out)), 500000);
-	gpioHardwarePWM(MOTOR2_CTL_PIN, abs((int)(pid_out)), 500000);
+	gpioHardwarePWM(MOTOR1_CTL_PIN, abs((int)(pid_out)), 1000);
+	gpioHardwarePWM(MOTOR2_CTL_PIN, abs((int)(pid_out)), 1000);
     
 	usleep(LOOP_TIME_US);
     }
-  
+    gpioHardwarePWM(MOTOR1_CTL_PIN, 0, 500000); // stop motors
+    gpioHardwarePWM(MOTOR2_CTL_PIN, 0, 500000);
     i2cClose(i2c_handle);
     gpioTerminate();
     return 0;
