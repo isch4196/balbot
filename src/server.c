@@ -39,6 +39,11 @@ void *get_in_addr(struct sockaddr *sa)
     return &(((struct sockaddr_in6*)sa)->sin6_addr);
 }
 
+/**
+ * sockfd_setup() - set up socket for clients to connect to
+ * 
+ * Return: int - socket file descriptor
+ */
 int sockfd_setup(void)
 {
     int sockfd, rv;
@@ -55,7 +60,7 @@ int sockfd_setup(void)
     // binded or connected to
     if ((rv = getaddrinfo(NULL, PORT, &hints, &servinfo)) != 0) {
         fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
-        exit(1);
+	exit(1);
     }
 
     // loop through all the results and bind to the first we can

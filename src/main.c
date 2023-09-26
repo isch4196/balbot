@@ -6,21 +6,12 @@
 #include <unistd.h>
 #include <signal.h>
 #include <pigpio.h>
-#include <unistd.h>
-#include <errno.h>
-#include <string.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <netdb.h>
-#include <arpa/inet.h>
-#include <sys/wait.h>
-#include <signal.h>
 
-#include "server.h"
 #include "mpu6050.h"
 #include "common.h"
 #include "PID-library/pid.h"
+
+#include "server.h"
 
 // to comply with unity
 #ifndef TEST
@@ -51,8 +42,11 @@ int MAIN(void)
     x_acc_ang = y_gyro_ang = angle = pid_out = 0;
     angle_set_pt = ANGLE_SET_PT;
 
-    // initialize socket server
-    
+    int sockfd, new_fd; // listen on sockfd, new conn on new_fd
+    int num_bytes, recv_int;
+    char ip_str[INET6_ADDRSTRLEN];
+    struct sockaddr_storage their_addr; // connector's address information
+    socklen_t sin_size;
     
     // initialize gpios & pid
     ret = gpioInitialise();
@@ -75,7 +69,22 @@ int MAIN(void)
     PID_SetMode(&TPID, _PID_MODE_AUTOMATIC);
     PID_SetSampleTime(&TPID, LOOP_TIME_MS);
     PID_SetOutputLimits(&TPID, -10000, 10000); 
-  
+
+    // initialize socket server
+    sockfd = sockfd_setup();
+
+    printf("server: waiting for client to connect...\n");
+    sin_size = sizeof(their_addr);
+    new_fd = accept(sockfd, (struct sockaddr *)&their_addr, &sin_size);
+    if (new_fd == -1) {
+	perror("accept");
+    }
+    if (!inet_ntop(their_addr.ss_family,
+		   get_in_addr((struct sockaddr *)&their_addr), ip_str, sizeof(ip_str))) {
+	perror("inet_ntop");
+    }
+    printf("server: got connection from %s\n", ip_str);
+    
     //main code
     while(!stop) {
 	ret = i2cReadI2CBlockData(i2c_handle, MPU6050_REG_ACCEL_XOUT_H, acc_gyro_buf, ACCEL_GYRO_BUF_RD_BYTES);
