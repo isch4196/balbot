@@ -49,14 +49,3 @@ int mpu6050_init(void)
  mpu_init_pass:
   return i2c_handle;
 }
-
-#warning make inline function
-int get_accel_gyro_data(int i2c_handle, char *acc_gyro_buf)
-{
-  int ret;
-  ret = i2cReadI2CBlockData(i2c_handle, MPU6050_REG_ACCEL_XOUT_H, acc_gyro_buf, ACCEL_GYRO_BUF_RD_BYTES);
-  if (ACCEL_GYRO_BUF_RD_BYTES != ret) {
-    ret = -1; // read an unexpected number of bytes
-  }
-  return ret;
-}

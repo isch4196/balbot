@@ -1,7 +1,6 @@
 #ifdef TEST
 
 #include "unity.h"
-
 #include "server.h"
 
 void setUp(void)

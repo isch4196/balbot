@@ -15,4 +15,4 @@ s: src/server.c
 c: src/client.c
 	${CC} src/client.c -lcurses -o client
 clean:
-	rm -f main.o mpu6050.o pid.o balbot
+	rm -f main.o mpu6050.o pid.o balbot server client

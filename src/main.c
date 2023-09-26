@@ -6,10 +6,28 @@
 #include <unistd.h>
 #include <signal.h>
 #include <pigpio.h>
+#include <unistd.h>
+#include <errno.h>
+#include <string.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <netdb.h>
+#include <arpa/inet.h>
+#include <sys/wait.h>
+#include <signal.h>
 
+#include "server.h"
 #include "mpu6050.h"
 #include "common.h"
 #include "PID-library/pid.h"
+
+// to comply with unity
+#ifndef TEST
+#define MAIN main
+#else
+#define MAIN testable_main
+#endif
 
 #define MOTOR1_CTL_PIN 18
 #define MOTOR1_DIR_PIN 24
@@ -23,7 +41,7 @@ void sigint_handler(int signum);
 
 #warning change printf to syslog
 
-int main(void)
+int MAIN(void)
 {
     PID_TypeDef TPID;
     char acc_gyro_buf[ACCEL_GYRO_BUF_RD_BYTES];
@@ -32,8 +50,11 @@ int main(void)
     double x_acc_ang, y_gyro_ang, angle, pid_out, angle_set_pt;
     x_acc_ang = y_gyro_ang = angle = pid_out = 0;
     angle_set_pt = ANGLE_SET_PT;
-  
-    // initializations
+
+    // initialize socket server
+    
+    
+    // initialize gpios & pid
     ret = gpioInitialise();
     if (ret == PI_INIT_FAILED) {
 	printf("gpioInitialise failed\n");
@@ -60,6 +81,7 @@ int main(void)
 	ret = i2cReadI2CBlockData(i2c_handle, MPU6050_REG_ACCEL_XOUT_H, acc_gyro_buf, ACCEL_GYRO_BUF_RD_BYTES);
 	if (ret < 0) {
 	    printf("i2cReadI2CBlockData fail: %d\n", ret);
+	    goto exit;
 	}
 
 	// may not need all of these variables
@@ -91,6 +113,7 @@ int main(void)
     
 	usleep(LOOP_TIME_US);
     }
+ exit:
     gpioHardwarePWM(MOTOR1_CTL_PIN, 0, 500000); // stop motors
     gpioHardwarePWM(MOTOR2_CTL_PIN, 0, 500000);
     i2cClose(i2c_handle);

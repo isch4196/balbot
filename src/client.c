@@ -1,7 +1,3 @@
-/*
-** client.c -- a stream socket client demo
-*/
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -14,6 +10,13 @@
 #include <arpa/inet.h>
 #include <ncurses.h>
 #include "client.h"
+
+// to comply with unity
+#ifndef TEST
+#define MAIN main
+#else
+#define MAIN testable_main
+#endif
 
 #define PORT "2781" // the port client will be connecting to 
 
@@ -29,9 +32,9 @@ void *get_in_addr(struct sockaddr *sa)
     return &(((struct sockaddr_in6*)sa)->sin6_addr);
 }
 
-int main(int argc, char *argv[])
+int MAIN(int argc, char *argv[])
 {
-    int sockfd, numbytes;  
+    int sockfd, numbytes;
     char buf[MAXDATASIZE];
     struct addrinfo hints, *servinfo, *p;
     int rv, ch;
