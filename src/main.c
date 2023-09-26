@@ -4,13 +4,19 @@
 #include <time.h>
 #include <math.h>
 #include <unistd.h>
+#include <errno.h>
+#include <string.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <netdb.h>
+#include <arpa/inet.h>
 #include <signal.h>
 #include <pigpio.h>
 
 #include "mpu6050.h"
 #include "common.h"
 #include "PID-library/pid.h"
-
 #include "server.h"
 
 // to comply with unity

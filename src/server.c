@@ -12,13 +12,6 @@
 #include <signal.h>
 #include "server.h"
 
-// to comply with unity
-#ifndef TEST
-#define MAIN main
-#else
-#define MAIN testable_main
-#endif
-
 #define PORT "2781"  // the port users will be connecting to
 #define BACKLOG 1   // how many pending connections queue will hold
 
