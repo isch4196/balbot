@@ -10,7 +10,10 @@
 #include <arpa/inet.h>
 #include <sys/wait.h>
 #include <signal.h>
+#include <fcntl.h>
 #include "server.h"
+
+
 
 #define PORT "2781"  // the port users will be connecting to
 #define BACKLOG 1   // how many pending connections queue will hold
@@ -114,18 +117,24 @@ int MAIN(void)
 	perror("inet_ntop");
     }
     printf("server: got connection from %s\n", ip_str);
+
+    int status = fcntl(new_fd, F_SETFL, fcntl(new_fd, F_GETFL, 0) | O_NONBLOCK);
+    if (status == 1) {
+      perror("fcntl");
+    }
     
 #warning replace recv_int with a circular queue?
     recv_int = 0;
     while(1) {
 	if ((num_bytes = recv(new_fd, &recv_int, sizeof(recv_int), 0)) == -1) {
-	    perror("recv");
-	    exit(1);
+	  continue;
 	} else if (!num_bytes) {
 	    printf("Socket peer has shutdown\n");
 	    break;
+	} else {
+	  printf("server: received %d\n", ntohl(recv_int));
 	}
-	printf("server: received %d\n", ntohl(recv_int));
+	
     }
     return 0;
 }

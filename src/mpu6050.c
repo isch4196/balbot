@@ -32,13 +32,13 @@ int mpu6050_init(void)
     goto mpu_init_fail;
   }
   
-  ret = i2cWriteByteData(i2c_handle, MPU6050_REG_ACCEL_CONFIG, MPU6050_ACCELCFG_4G);
+  ret = i2cWriteByteData(i2c_handle, MPU6050_REG_ACCEL_CONFIG, MPU6050_ACCELCFG_2G);
   if (ret) {
     syslog(LOG_ERR, "i2cWriteByteData fail: %d\n", ret);
     goto mpu_init_fail;
   }
   
-  ret = i2cWriteByteData(i2c_handle, MPU6050_REG_GYRO_CONFIG, MPU6050_GYROCFG_500);
+  ret = i2cWriteByteData(i2c_handle, MPU6050_REG_GYRO_CONFIG, MPU6050_GYROCFG_1000);
   if (ret) {
     syslog(LOG_ERR, "i2cWriteByteData fail: %d\n", ret);
     goto mpu_init_fail;
