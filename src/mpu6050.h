@@ -38,12 +38,11 @@
 #define MPU6050_GYROCFG_1000	(0x02 << 3)
 #define MPU6050_GYROCFG_2000	(0x03 << 3)
 
-#warning do proper calibration later using code of Jeff Rowberg
 // MPU6050 CALIBRATION OFFSETS
 #define MPU6050_ACCEL_X_OFFSET  -153
 #define MPU6050_ACCEL_Y_OFFSET	753
 #define MPU6050_ACCEL_Z_OFFSET	-2112
-#define MPU6050_GYRO_X_OFFSET	-35
+#define MPU6050_GYRO_X_OFFSET	23
 #define MPU6050_GYRO_Y_OFFSET	-31
 #define MPU6050_GYRO_Z_OFFSET	151
 
@@ -74,6 +73,7 @@
 #define ANGLE_SET_PT	0
 
 int mpu6050_init(void);
+uint8_t tune_mpu6050(int i2c_handle, char *acc_gyro_buf, float *y_acc_avg_offset, float *z_acc_avg_offset, float *x_gyro_avg_offset);
 
 #endif
 
