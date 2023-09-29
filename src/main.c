@@ -20,14 +20,16 @@
 #include "PID-library/pid.h"
 #include "server.h"
 
-// eliminate portions of code for testing
-#define TEST_PID 1
+#define TEST_PID	1
 
-#define MOTOR1_CTL_PIN 18
-#define MOTOR1_DIR_PIN 24
+#define MOTOR1_CTL_PIN	18
+#define MOTOR1_DIR_PIN	24
 
-#define MOTOR2_CTL_PIN 12
-#define MOTOR2_DIR_PIN 23
+#define MOTOR2_CTL_PIN	12
+#define MOTOR2_DIR_PIN	23
+
+#define USE_DEFAULT_VALUES	1
+#define USE_TUNED_VALUES	4
 
 static volatile sig_atomic_t stop;
 
@@ -35,16 +37,19 @@ void sigint_handler(int signum);
 
 #warning change printf to syslog
 
-int main(void)
+int main(int argc, char *argv[])
 {
     PID_TypeDef TPID;
     char acc_gyro_buf[8];
     int16_t y_acc_val, z_acc_val, x_gyro_val;
     int i2c_handle, ret;
     double x_acc_ang, y_gyro_ang, angle, pid_out, angle_set_pt;
+    double p, i, d;
     x_acc_ang = y_gyro_ang = angle = pid_out = 0;
     angle_set_pt = ANGLE_SET_PT;
-
+    
+    uint8_t ctrl = 0;
+    
 #if !TEST_PID
     int sockfd, new_fd; // listen on sockfd, new conn on new_fd
     int num_bytes, recv_int;
@@ -52,8 +57,17 @@ int main(void)
     struct sockaddr_storage their_addr; // connector's address information
     socklen_t sin_size;
 #endif
-    
-    uint8_t ctrl = 0;
+
+    if (USE_TUNED_VALUES == argc) { 
+	p = atoi(argv[1]); i = atoi(argv[2]); d = atoi(argv[3]);
+	printf("Using tuned values p %f, i=%f d=%f\n", p, i, d);
+    } else if (USE_DEFAULT_VALUES == argc) {
+	p = 130; i = 0; d = 0;
+	printf("Using default values p=%f, i=%f d=%f\n", p, i, d);
+    } else {
+	printf("Wrong number of arguments supplied.\n");
+	return -1;
+    }
     
     // initialize gpios & pid
     ret = gpioInitialise();
@@ -72,7 +86,7 @@ int main(void)
 	return -1;
     }
 
-    PID(&TPID, &angle, &pid_out, &angle_set_pt, 130, 0, 0, _PID_P_ON_E, _PID_CD_REVERSE); // 115, 18, 5
+    PID(&TPID, &angle, &pid_out, &angle_set_pt, p, i, d, _PID_P_ON_E, _PID_CD_REVERSE); // 115, 18, 5
     PID_SetMode(&TPID, _PID_MODE_AUTOMATIC);
     PID_SetSampleTime(&TPID, LOOP_TIME_MS);
     PID_SetOutputLimits(&TPID, -15000, 15000); 
