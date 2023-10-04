@@ -38,7 +38,7 @@ int mpu6050_init(void)
 	goto mpu_init_fail;
     }
 
-    ret = i2cWriteByteData(i2c_handle, 0x1A, 0);
+    ret = i2cWriteByteData(i2c_handle, MPU6050_REG_CONFIG, 0);
     if (ret) {
 	syslog(LOG_ERR, "i2cWriteByteData fail: %d\n", ret);
 	goto mpu_init_fail;
