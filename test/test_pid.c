@@ -60,7 +60,22 @@ void test_pid_kd(void)
 
 void test_pid_ki(void)
 {
-    TEST_IGNORE_MESSAGE("Need to Implement ki");
+    PID_TypeDef TPID;
+    double angle, pid_out, angle_set_point;
+
+    angle_set_point = 0;
+    PID(&TPID, &angle, &pid_out, &angle_set_point, 5, 2000, 0, _PID_P_ON_E, _PID_CD_REVERSE);
+    
+    PID_SetMode(&TPID, _PID_MODE_AUTOMATIC);
+    PID_SetSampleTime(&TPID, 1); // set sample time to 1ms for testing
+    PID_SetOutputLimits(&TPID, -100, 100); // need to update
+
+    // first run
+    usleep(1000);
+    angle = 5;
+    PID_Compute(&TPID);
+    // Kp (5*5 = 25) + Ki ((1*10^-3)*2000*5 = 10) = 35
+    TEST_ASSERT_EQUAL(35, pid_out);
 }
 
 void test_pid_positive_to_negative(void)
