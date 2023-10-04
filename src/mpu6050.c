@@ -17,45 +17,51 @@
  */
 int mpu6050_init(void)
 {
-  int i2c_handle, ret;
+    int i2c_handle, ret;
   
-  i2c_handle = i2cOpen(1, MPU6050_I2C_ADDR, 0);
-  if (i2c_handle < 0) {
-    syslog(LOG_ERR, "i2cOpen fail: %d\n", i2c_handle);
-    ret = i2c_handle;
-    goto mpu_init_fail;
-  }
+    i2c_handle = i2cOpen(1, MPU6050_I2C_ADDR, 0);
+    if (i2c_handle < 0) {
+	syslog(LOG_ERR, "i2cOpen fail: %d\n", i2c_handle);
+	ret = i2c_handle;
+	goto mpu_init_fail;
+    }
   
-  ret = i2cWriteByteData(i2c_handle, MPU6050_REG_PWR_MGMT_1, MPU6050_PWR1_8MHZ_OSC);
-  if (ret) {
-    syslog(LOG_ERR, "i2cWriteByteData fail: %d\n", ret);
-    goto mpu_init_fail;
-  }
+    ret = i2cWriteByteData(i2c_handle, MPU6050_REG_PWR_MGMT_1, MPU6050_PWR1_8MHZ_OSC);
+    if (ret) {
+	syslog(LOG_ERR, "i2cWriteByteData fail: %d\n", ret);
+	goto mpu_init_fail;
+    }
   
-  ret = i2cWriteByteData(i2c_handle, MPU6050_REG_ACCEL_CONFIG, MPU6050_ACCELCFG_2G);
-  if (ret) {
-    syslog(LOG_ERR, "i2cWriteByteData fail: %d\n", ret);
-    goto mpu_init_fail;
-  }
+    ret = i2cWriteByteData(i2c_handle, MPU6050_REG_ACCEL_CONFIG, MPU6050_ACCELCFG_2G);
+    if (ret) {
+	syslog(LOG_ERR, "i2cWriteByteData fail: %d\n", ret);
+	goto mpu_init_fail;
+    }
+
+    ret = i2cWriteByteData(i2c_handle, 0x1A, 0);
+    if (ret) {
+	syslog(LOG_ERR, "i2cWriteByteData fail: %d\n", ret);
+	goto mpu_init_fail;
+    }
   
-  ret = i2cWriteByteData(i2c_handle, MPU6050_REG_GYRO_CONFIG, MPU6050_GYROCFG_1000);
-  if (ret) {
-    syslog(LOG_ERR, "i2cWriteByteData fail: %d\n", ret);
-    goto mpu_init_fail;
-  }
-  goto mpu_init_pass;
+    ret = i2cWriteByteData(i2c_handle, MPU6050_REG_GYRO_CONFIG, MPU6050_GYROCFG_500);
+    if (ret) {
+	syslog(LOG_ERR, "i2cWriteByteData fail: %d\n", ret);
+	goto mpu_init_fail;
+    }
+    goto mpu_init_pass;
  mpu_init_fail:
-  return ret;
+    return ret;
  mpu_init_pass:
-  return i2c_handle;
+    return i2c_handle;
 }
 
 /**
  * tune_mpu6050() - Tune the mpu6050 gyro and accel values
  *
  * The mpu6050 does not seem to be accurate nor precise. Every time the program
- * starts, it has different offsets, so turn the mpu6050 offsets on every start
- * of the program.
+ * starts, it has different offsets, at least for me. So tune the mpu6050 offsets
+ * on every start of the program by taking an average.
  * 
  * Return: 0 on success, else fail
  * 
@@ -94,9 +100,10 @@ uint8_t tune_mpu6050(int i2c_handle, char *acc_gyro_buf, float *y_acc_avg_offset
 	
 	clock_gettime(CLOCK_MONOTONIC, &spec);
     }
-    z_acc_avg_offset_tmp -= 16384; // resting position hovesr around 16384
+    z_acc_avg_offset_tmp -= 16384; // resting position hovers around 16384
     *y_acc_avg_offset = y_acc_avg_offset_tmp;
     *z_acc_avg_offset = z_acc_avg_offset_tmp;
     *x_gyro_avg_offset = x_gyro_avg_offset_tmp;
+    
     return 0;
 }

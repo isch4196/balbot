@@ -70,7 +70,7 @@
 
 // Application Code Macros
 #define RAD_TO_DEG	57.298578
-#define ANGLE_SET_PT	0
+#define ANGLE_SET_PT    -0.5
 
 int mpu6050_init(void);
 uint8_t tune_mpu6050(int i2c_handle, char *acc_gyro_buf, float *y_acc_avg_offset, float *z_acc_avg_offset, float *x_gyro_avg_offset);
