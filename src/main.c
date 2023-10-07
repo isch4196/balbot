@@ -106,7 +106,7 @@ int main(int argc, char *argv[])
 	perror("accept");
     }
     if (!inet_ntop(their_addr.ss_family,
-v		   get_in_addr((struct sockaddr *)&their_addr), ip_str, sizeof(ip_str))) {
+		   get_in_addr((struct sockaddr *)&their_addr), ip_str, sizeof(ip_str))) {
 	perror("inet_ntop");
     }
     printf("server: got connection from %s\n", ip_str);
@@ -197,7 +197,7 @@ v		   get_in_addr((struct sockaddr *)&their_addr), ip_str, sizeof(ip_str))) {
 	    } else if (turn_dir == TURN_RIGHT) {
 		mot1_stepper_dir = mot2_stepper_dir = 0;
 	    } else {
-		printf("Unknown turn direction?"\n");
+		printf("Unknown turn direction?\n");
 		return -1;
 	    }
 	    gpioWrite(MOTOR1_DIR_PIN, mot1_stepper_dir);
