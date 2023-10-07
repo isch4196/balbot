@@ -37,4 +37,7 @@
 #define MOVE_ANGLE		5
 #define DEF_TURN_SPEED		2000
 
+#define COMP_FILTER_HIGH	0.98
+#define COMP_FILTER_LOW		(1-COMP_FILTER_HIGH)
+
 #endif

@@ -60,8 +60,17 @@ int mpu6050_init(void)
  * tune_mpu6050() - Tune the mpu6050 gyro and accel values
  *
  * The mpu6050 does not seem to be accurate nor precise. Every time the program
- * starts, it has different offsets, at least for me. So tune the mpu6050 offsets
- * on every start of the program by taking an average.
+ * starts, it has different offsets, at least for me. So tune the mpu6050
+ * offsets on every start of the program by taking an average.  
+ * 
+ * Another way to try to fix this would be using the onboard digital motion
+ * processor to do the calculations for us... results may be better that way.
+ * 
+ * @i2c_handle: valid i2c handle, should be checked before use
+ * @acc_gyro_buf: Buffer containing the accelerometer and gyroscope data
+ * @y_acc_avg_offset: y acceleration average offset to set
+ * @z_acc_avg_offset: z acceleration average offset to set
+ * @x_gyro_avg_offset: x gyro average offset to set
  * 
  * Return: 0 on success, else fail
  * 
@@ -78,7 +87,7 @@ uint8_t tune_mpu6050(int i2c_handle, char *acc_gyro_buf, float *y_acc_avg_offset
     uint32_t count = 0;
 
     clock_gettime(CLOCK_MONOTONIC, &spec);
-    sec_to_wait = spec.tv_sec + 5;
+    sec_to_wait = spec.tv_sec + TUNE_SEC;
     while (spec.tv_sec <= sec_to_wait) {
 	if ((ret = i2cReadI2CBlockData(i2c_handle, MPU6050_REG_ACCEL_YOUT_H, acc_gyro_buf, 8)) < 0) {
 	    printf("i2cReadI2CBlockData fail: %d\n", ret);
