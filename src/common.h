@@ -30,4 +30,11 @@
 #define LEFT_KEY		260
 #define RIGHT_KEY		261
 
+#define NO_TURN			0
+#define TURN_LEFT		1
+#define TURN_RIGHT		2
+
+#define MOVE_ANGLE		5
+#define DEF_TURN_SPEED		2000
+
 #endif

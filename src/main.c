@@ -52,6 +52,7 @@ int main(int argc, char *argv[])
     angle_set_pt = ANGLE_SET_PT; // set angle to stabilize at
     left_pid = right_pid = 0;
     adj_ang_count = input = 0;
+    turn_dir = NO_TURN;
     
     if (USE_TUNED_VALUES == argc) { 
 	p = atof(argv[1]); i = atof(argv[2]); d = atof(argv[3]);
@@ -128,24 +129,24 @@ int main(int argc, char *argv[])
 	    
 	    switch(recv_int) {
 	    case UP_KEY:
-		angle_set_pt = 5;
+		angle_set_pt = MOVE_ANGLE;
 		left_pid = 0;
 		right_pid = 0;		
 		break;
 	    case DOWN_KEY:
-		angle_set_pt = -5;
+		angle_set_pt = -MOVE_ANGLE;
 		left_pid = 0;
 		right_pid = 0;
 		break;
 	    case LEFT_KEY:
-		turn_dir = 1;
-		left_pid = right_pid = 2000;
-		angle_set_pt = 0;
+		turn_dir = TURN_LEFT;
+		left_pid = right_pid = DEF_TURN_SPEED;
+		angle_set_pt = ANGLE_SET_PT;
 		break;
 	    case RIGHT_KEY:
-		turn_dir = 2;
-		left_pid = right_pid = 2000;
-		angle_set_pt = 0;
+		turn_dir = TURN_RIGHT;
+		left_pid = right_pid = DEF_TURN_SPEED;
+		angle_set_pt = ANGLE_SET_PT;
 		break;
 	    default:
 		break;
@@ -176,8 +177,8 @@ int main(int argc, char *argv[])
 	if (input) {
 	    --input;
 	} else {
-	    angle_set_pt = 0;
-	    turn_dir = 0;
+	    angle_set_pt = ANGLE_SET_PT;
+	    turn_dir = NO_TURN;
 	    left_pid = 0;
 	    right_pid = 0;
 	}
@@ -187,13 +188,13 @@ int main(int argc, char *argv[])
 	if (++adj_ang_count >= ADJ_ANG_TIME_LOOP) {
 	    adj_ang_count = 0;
 	    
-	    if (!turn_dir) {
+	    if (turn_dir == NO_TURN) {
 		mot2_stepper_dir = (pid_out >= 0) ? 1:0;
 		mot1_stepper_dir = !mot2_stepper_dir;
-	    } else if (turn_dir == 1) {
-		mot1_stepper_dir = mot2_stepper_dir = 1; // left
-	    } else {
-		mot1_stepper_dir = mot2_stepper_dir = 0; // right
+	    } else if (turn_dir == TURN_LEFT) {
+		mot1_stepper_dir = mot2_stepper_dir = 1;
+	    } else { // turn right
+		mot1_stepper_dir = mot2_stepper_dir = 0;
 	    }
 	    gpioWrite(MOTOR1_DIR_PIN, mot1_stepper_dir);
 	    gpioWrite(MOTOR2_DIR_PIN, mot2_stepper_dir);
