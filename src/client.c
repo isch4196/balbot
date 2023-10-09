@@ -9,6 +9,7 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <ncurses.h>
+#include <signal.h>
 #include "client.h"
 
 // to comply with unity
@@ -22,6 +23,8 @@
 
 #define MAXDATASIZE 100 // max number of bytes we can get at once 
 
+static volatile sig_atomic_t stop;
+
 // get sockaddr, IPv4 or IPv6:
 void *get_in_addr(struct sockaddr *sa)
 {
@@ -30,6 +33,11 @@ void *get_in_addr(struct sockaddr *sa)
     }
 
     return &(((struct sockaddr_in6*)sa)->sin6_addr);
+}
+
+void sigint_handler(int signum)
+{
+    stop = 1;
 }
 
 int MAIN(int argc, char *argv[])
@@ -79,6 +87,8 @@ int MAIN(int argc, char *argv[])
     initscr();
     keypad(stdscr, TRUE);
     noecho();
+
+    signal(SIGINT, sigint_handler);
     
     inet_ntop(p->ai_family, get_in_addr((struct sockaddr *)p->ai_addr),
             s, sizeof s);
@@ -86,18 +96,8 @@ int MAIN(int argc, char *argv[])
 
     freeaddrinfo(servinfo); // all done with this structure
 
-    /* // receive something from the server */
-    /* if ((numbytes = recv(sockfd, buf, MAXDATASIZE-1, 0)) == -1) { */
-    /*     perror("recv"); */
-    /*     exit(1); */
-    /* } */
-    /* buf[numbytes] = '\0'; */
-    /* printw("client: received '%s'\n",buf); */
-
-    // getch() isn't standardized for, so arrow key codes may vary from compiler
-    // to compiler, so use ncurses to take care of that
     int num_to_send;
-    while ((ch = getch()) != '#') {
+    while (!stop && (ch = getch()) != '#') {
 	switch (ch) {
 	case KEY_UP:
 	case KEY_DOWN:
@@ -106,7 +106,6 @@ int MAIN(int argc, char *argv[])
 	    num_to_send = htonl(ch);
 	    goto send;
 	default:
-	    printw("random key: %d\n", ch);
 	    break;
 	}
     default_action:
