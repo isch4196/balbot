@@ -71,7 +71,7 @@
 
 // Application Code Macros
 #define RAD_TO_DEG	57.298578
-#define ANGLE_SET_PT    -0.5
+#define ANGLE_SET_PT    -0.2
 #define TUNE_SEC        5
 
 int mpu6050_init(void);

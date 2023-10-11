@@ -21,7 +21,7 @@
 #include "PID-library/pid.h"
 #include "server.h"
 
-#define TEST_PID 0
+#define TEST_PID 1
 
 static volatile sig_atomic_t stop;
 
@@ -65,7 +65,17 @@ int main(int argc, char *argv[])
 	printf("Wrong number of arguments supplied.\n");
 	return -1;
     }
-    
+
+    pid_t pid = fork();
+    if (0 == pid) { // child
+	execl("/bin/libcamera-vid", "libcamera-vid", "-n", "-t", "0", "--inline", "--width", "640", "--height", "480", "--framerate", "30", "-o", "udp://000.0.00.00:3900", (char*)0);
+    } else if (pid > 0) { // parent
+	goto parent_process;
+    } else {
+	perror("fork error");
+	exit(1);
+    }
+ parent_process:
     // initialize gpios & pid
     ret = gpioInitialise();
     if (ret == PI_INIT_FAILED) {
@@ -193,16 +203,15 @@ int main(int argc, char *argv[])
 		mot2_stepper_dir = (pid_out >= 0) ? 1:0;
 		mot1_stepper_dir = !mot2_stepper_dir;
 	    } else if (turn_dir == TURN_LEFT) {
-		mot1_stepper_dir = mot2_stepper_dir = 1;
-	    } else if (turn_dir == TURN_RIGHT) {
 		mot1_stepper_dir = mot2_stepper_dir = 0;
+	    } else if (turn_dir == TURN_RIGHT) {
+		mot1_stepper_dir = mot2_stepper_dir = 1;
 	    } else {
 		printf("Unknown turn direction?\n");
 		return -1;
 	    }
 	    gpioWrite(MOTOR1_DIR_PIN, mot1_stepper_dir);
 	    gpioWrite(MOTOR2_DIR_PIN, mot2_stepper_dir);
-	    
 	    gpioHardwarePWM(MOTOR1_CTL_PIN, abs((int)(pid_out+left_pid)), 1000);
 	    gpioHardwarePWM(MOTOR2_CTL_PIN, abs((int)(pid_out+right_pid)), 1000);
 	}
