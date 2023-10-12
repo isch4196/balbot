@@ -1,126 +1,222 @@
 #include <stdio.h>
 #include <stdint.h>
+#include <stdlib.h>
 #include <time.h>
 #include <math.h>
 #include <unistd.h>
+#include <errno.h>
+#include <string.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <netdb.h>
+#include <arpa/inet.h>
 #include <signal.h>
+#include <fcntl.h>
+#include <syslog.h>
 #include <pigpio.h>
 
 #include "mpu6050.h"
+#include "common.h"
+#include "PID-library/pid.h"
+#include "server.h"
 
-#define DEBUG		0
-
-#define LOOP_TIME_MS	50
-#define LOOP_TIME_US	(LOOP_TIME_MS*1000)
-#define LOOP_TIME_S	(LOOP_TIME_MS/1000.0)
-
-#define RAD_TO_DEG	57.298578
+#define TEST_PID 0
 
 static volatile sig_atomic_t stop;
 
 void sigint_handler(int signum);
 
-#warning change printf to syslog
-
-int main(void)
+int main(int argc, char *argv[])
 {
-  char acc_gyro_buf[ACCEL_GYRO_BUF_RD_BYTES];
-  int16_t x_acc_val, y_acc_val, z_acc_val, x_gyro_val, y_gyro_val, z_gyro_val, temp;
-  int i2c_handle, ret;
-  float x_acc_ang, y_gyro_ang, filtered_ang;
-
-  x_acc_ang, y_gyro_ang, filtered_ang = 0;
+    PID_TypeDef TPID;
+    char acc_gyro_buf[ACCEL_GYRO_BUF_RD_BYTES];
+    int16_t y_acc_val, z_acc_val, x_gyro_val;
+    int i2c_handle, ret;
+    double x_acc_ang, y_gyro_ang, angle, pid_out, angle_set_pt;
+    double p, i, d;
+    float left_pid, right_pid;
+    uint32_t adj_ang_count;
+    unsigned char mot1_stepper_dir, mot2_stepper_dir;
+    unsigned char turn_dir;
+    uint8_t input;
+    
+#if !TEST_PID
+    int sockfd, new_fd; // listen on sockfd, new conn on new_fd
+    int num_bytes, recv_int;
+    char ip_str[INET6_ADDRSTRLEN];
+    struct sockaddr_storage their_addr; // connector's address information
+    socklen_t sin_size;
+#endif
+    
+    x_acc_ang = y_gyro_ang = angle = pid_out = 0;
+    angle_set_pt = ANGLE_SET_PT;
+    left_pid = right_pid = 0;
+    adj_ang_count = input = 0;
+    turn_dir = NO_TURN;
+    
+    if (USE_TUNED_VALUES == argc) { 
+	p = atof(argv[1]); i = atof(argv[2]); d = atof(argv[3]);
+	printf("Using tuned values p=%f, i=%f d=%f\n", p, i, d);
+    } else if (USE_DEFAULT_VALUES == argc) {
+	p = DEF_P_VAL; i = DEF_I_VAL; d = DEF_D_VAL;
+	printf("Using default values p=%f, i=%f d=%f\n", p, i, d);
+    } else {
+	printf("Wrong number of arguments supplied.\n");
+	return -1;
+    }
+    
+    // initialize gpios & pid
+    ret = gpioInitialise();
+    if (ret == PI_INIT_FAILED) {
+	printf("gpioInitialise failed\n");
+	return -1;
+    }
+    signal(SIGINT, sigint_handler); // register after gpioInitialise to override pigpio sig handler
   
-  // initializations
-  ret = gpioInitialise();
-  if (ret == PI_INIT_FAILED) {
-    printf("gpioInitialise failed\n");
-    return 1;
-  }
-  signal(SIGINT, sigint_handler); // register after gpioInitialise to override pigpio sig handler
-  
-  i2c_handle = mpu6050_init();
-  if (i2c_handle < 0 ) {
-    printf("mpu6050_init fail: %d\n", ret);
-  }
+    gpioSetMode(MOTOR1_DIR_PIN, PI_OUTPUT); // Stepper Motor 1 Direction
+    gpioSetMode(MOTOR2_DIR_PIN, PI_OUTPUT); // Stepper Motor 2 Direction
 
-  // main code
-  while(!stop) {
-    ret = i2cReadI2CBlockData(i2c_handle, MPU6050_REG_ACCEL_XOUT_H, acc_gyro_buf, ACCEL_GYRO_BUF_RD_BYTES);
-    if (ret < 0) {
-      printf("i2cReadI2CBlockData fail: %d\n", ret);
+    i2c_handle = mpu6050_init();
+    if (i2c_handle < 0 ) {
+	printf("mpu6050_init fail: %d\n", i2c_handle);
+	return -1;
     }
 
-    x_acc_val = (acc_gyro_buf[ACCEL_X_OUT_L] | (acc_gyro_buf[ACCEL_X_OUT_H] << 8)) + MPU6050_ACCEL_X_OFFSET;
-    y_acc_val = (acc_gyro_buf[ACCEL_Y_OUT_L] | (acc_gyro_buf[ACCEL_Y_OUT_H] << 8)) + MPU6050_ACCEL_Y_OFFSET;
-    z_acc_val = (acc_gyro_buf[ACCEL_Z_OUT_L] | (acc_gyro_buf[ACCEL_Z_OUT_H] << 8)) + MPU6050_ACCEL_Z_OFFSET;
-    temp = (acc_gyro_buf[TEMP_L] | (acc_gyro_buf[TEMP_H] << 8));
-    x_gyro_val = (acc_gyro_buf[GYRO_X_OUT_L] | (acc_gyro_buf[GYRO_X_OUT_H] << 8)) + MPU6050_GYRO_X_OFFSET;
-    y_gyro_val = (acc_gyro_buf[GYRO_Y_OUT_L] | (acc_gyro_buf[GYRO_Y_OUT_H] << 8)) + MPU6050_GYRO_Y_OFFSET;
-    z_gyro_val = (acc_gyro_buf[GYRO_Z_OUT_L] | (acc_gyro_buf[GYRO_Z_OUT_H] << 8)) + MPU6050_GYRO_Z_OFFSET;
+    PID(&TPID, &angle, &pid_out, &angle_set_pt, p, i, d, _PID_P_ON_E, _PID_CD_REVERSE);
+    PID_SetMode(&TPID, _PID_MODE_AUTOMATIC);
+    PID_SetSampleTime(&TPID, LOOP_TIME_MS);
+    PID_SetOutputLimits(&TPID, -35000, 35000); 
 
-    /* // do calculations and print out */
-    /* printf("x-axis accel: 0x%x, %d\n", x_acc_val, x_acc_val); */
-    /* printf("x-axis accel output: %f\n", x_acc_val/8192.0); */
-    /* printf("atan2: %f\n", atan2(x_acc_val/8192.0, z_acc_val/8192.0)*57.3); // x angle, 2-axis sensing */
-    /* printf("atan2: %f\n", atan2(x_acc_val/8192.0, sqrt((y_acc_val/8192.0)*(y_acc_val/8192.0)+(z_acc_val/8192.0)*(z_acc_val/8192.0)))*57.3); // x angle, 3-axis sensing */
-  
-    /* printf("y-axis accel: 0x%x, %d\n", y_acc_val, y_acc_val); */
-    /* printf("y-axis accel output: %f\n", y_acc_val/8192.0); */
-  
-    /* printf("z-axis accel: 0x%x, %d\n", z_acc_val, z_acc_val); */
-    /* printf("z-axis accel output: %f\n", z_acc_val/8192.0); */
+    // tune the mpu6050 value offset. through testing it has been found to be quite volatile
+    float y_acc_avg_offset = 0, z_acc_avg_offset = 0, x_gyro_avg_offset = 0;
+    if (tune_mpu6050(i2c_handle, acc_gyro_buf, &y_acc_avg_offset, &z_acc_avg_offset, &x_gyro_avg_offset)) {
+	return -1;
+    }
+    printf("Calculated offsets; y_acc: %f, z_acc: %f, x_gyro: %f\n", y_acc_avg_offset, z_acc_avg_offset, x_gyro_avg_offset);
 
-    //printf("accel outputs: %f %f %f\n", x_acc_val/8192.0, y_acc_val/8192.0, z_acc_val/8192.0);
+#if !TEST_PID
+    // initialize socket server
+    sockfd = sockfd_setup();
 
-    //printf("temp %f\n", temp/340.0 + 36.53);
+    printf("server: waiting for client to connect...\n");
+    sin_size = sizeof(their_addr);
+    new_fd = accept(sockfd, (struct sockaddr *)&their_addr, &sin_size);
+    if (new_fd == -1) {
+	perror("accept");
+    }
+    if (!inet_ntop(their_addr.ss_family,
+		   get_in_addr((struct sockaddr *)&their_addr), ip_str, sizeof(ip_str))) {
+	perror("inet_ntop");
+    }
+    printf("server: got connection from %s\n", ip_str);
+
+    if(fcntl(new_fd, F_SETFL, fcntl(new_fd, F_GETFL, 0) | O_NONBLOCK) == -1) {
+        perror("fcntl");
+    }
+#endif
     
-    //printf("x-axis gyro: 0x%x, %d\n", x_gyro_val, x_gyro_val);
-    //printf("x-axis gyro output: %f\n", (x_gyro_val/131.0)*0.1);
+    while(!stop) {
+	if ((ret = i2cReadI2CBlockData(i2c_handle, MPU6050_REG_ACCEL_YOUT_H, acc_gyro_buf, ACCEL_GYRO_BUF_RD_BYTES)) < 0) {
+ 	    syslog(LOG_ERR, "i2cReadI2CBlockData fail: %d\n", ret);
+	    continue;
+	}
+#if !TEST_PID
+	// check for any input
+	if ((num_bytes = recv(new_fd, &recv_int, sizeof(recv_int), 0)) > 0) {
+	    recv_int = ntohl(recv_int);
+	    printf("recv_int: %d\n", recv_int);
+	    input = INPUT_RESET_TIME_LOOP;
+	    
+	    switch(recv_int) {
+	    case UP_KEY:
+		angle_set_pt = MOVE_ANGLE;
+		left_pid = 0;
+		right_pid = 0;		
+		break;
+	    case DOWN_KEY:
+		angle_set_pt = -MOVE_ANGLE;
+		left_pid = 0;
+		right_pid = 0;
+		break;
+	    case LEFT_KEY:
+		turn_dir = TURN_LEFT;
+		left_pid = right_pid = DEF_TURN_SPEED;
+		angle_set_pt = ANGLE_SET_PT;
+		break;
+	    case RIGHT_KEY:
+		turn_dir = TURN_RIGHT;
+		left_pid = right_pid = DEF_TURN_SPEED;
+		angle_set_pt = ANGLE_SET_PT;
+		break;
+	    default:
+		break;
+	    }
+	    
+	} else if (!num_bytes) {
+	    printf("Socket peer has shutdown\n");
+	    stop = 1;
+	}
+#endif
+	
+	y_acc_val = (acc_gyro_buf[1] | (acc_gyro_buf[0] << 8)) + (-1)*(int)y_acc_avg_offset;
+	z_acc_val = (acc_gyro_buf[3] | (acc_gyro_buf[2] << 8)) + (-1)*(int)z_acc_avg_offset;
+	x_gyro_val = (acc_gyro_buf[7] | (acc_gyro_buf[6] << 8)) + (-1)*(int)x_gyro_avg_offset;
 
-    /* printf("y-axis gyro: 0x%x, %d\n", y_gyro_val, y_gyro_val); */
-    /* printf("y-axis gyro output: %f\n", (y_gyro_val/131.0)*0.1); */
+	// calculate angle and compute PID output
+	y_gyro_ang += (x_gyro_val/65.5)*LOOP_TIME_S;
+	x_acc_ang = atan2(y_acc_val/16384.0, z_acc_val/16384.0)*RAD_TO_DEG;
+	angle = (COMP_FILTER_HIGH * y_gyro_ang) + (COMP_FILTER_LOW * x_acc_ang); // bot may be moving, so use low-pass filter on accelerometer since accuracy is only good for long-term compensation
+	PID_Compute(&TPID);
 
-    /* printf("z-axis gyro: 0x%x, %d\n", z_gyro_val, z_gyro_val); */
-    /* printf("z-axis gyro output: %f\n", z_gyro_val/131.0);     */
+	if (abs(angle) >= STOP_ANGLE) {
+	    stop = 1;
+	}
 
-    //printf("gyro outputs: %f %f %f\n", x_gyro_val/131.0, y_gyro_val/131.0, z_gyro_val/131.0);    
+	// set a 'timer' for how long a control (forward, backward, left, right) lasts
+	// this will refresh if the user on host computer holds a button
+	if (input) {
+	    --input;
+	} else {
+	    angle_set_pt = ANGLE_SET_PT;
+	    turn_dir = NO_TURN;
+	    left_pid = 0;
+	    right_pid = 0;
+	}
 
-    y_gyro_ang += (x_gyro_val/65.5)*LOOP_TIME_S;
-    x_acc_ang = atan2(y_acc_val/8192.0, z_acc_val/8192.0)*RAD_TO_DEG;
-    filtered_ang = (0.95 * y_gyro_ang) + (0.05 * x_acc_ang);
-    
-    printf("outputs: %f %f %f %d\n", y_gyro_ang, x_acc_ang, filtered_ang, x_gyro_val);
-
-    // use angle to control the motor
-    
-    usleep(LOOP_TIME_US);
-  }
-  
-  /* // output */
-  /* gpioSetMode(23, PI_OUTPUT); */
-  /* int i=0; */
-  /* while(i++ < 200) { */
-  /*   gpioWrite(23, 1); */
-  /*   usleep(10000); */
-  /*   gpioWrite(23, 0); */
-  /*   usleep(10000); */
-  /* } */
-
-  // software pwm
-  /* gpioSetPWMfrequency(23, 1000); */
-  /* gpioSetPWMrange(23, 200); // 2500, 500us; 5000; 250us */
-  /* gpioPWM(23, 255); */
-
-  /* gpioHardwarePWM(18, 1000, 500000); */
-  
-  /* usleep(10000000); */
-  i2cClose(i2c_handle);
-  gpioTerminate();
-  return 0;
+	// adjust how often we actually control stepper motor based on pid output val
+	// too often results in shaky stepper motor, which messes up gyroscope reading
+	if (++adj_ang_count >= ADJ_ANG_TIME_LOOP) {
+	    adj_ang_count = 0;
+	    
+	    if (turn_dir == NO_TURN) {
+		mot2_stepper_dir = (pid_out >= 0) ? 1:0;
+		mot1_stepper_dir = !mot2_stepper_dir;
+	    } else if (turn_dir == TURN_LEFT) {
+		mot1_stepper_dir = mot2_stepper_dir = 1;
+	    } else if (turn_dir == TURN_RIGHT) {
+		mot1_stepper_dir = mot2_stepper_dir = 0;
+	    } else {
+		printf("Unknown turn direction?\n");
+		return -1;
+	    }
+	    gpioWrite(MOTOR1_DIR_PIN, mot1_stepper_dir);
+	    gpioWrite(MOTOR2_DIR_PIN, mot2_stepper_dir);
+	    
+	    gpioHardwarePWM(MOTOR1_CTL_PIN, abs((int)(pid_out+left_pid)), 1000);
+	    gpioHardwarePWM(MOTOR2_CTL_PIN, abs((int)(pid_out+right_pid)), 1000);
+	}
+	usleep(LOOP_TIME_US); // can change to using a semaphore approach and separate into tasks to avoid sleeping
+    }
+    // exit routine
+    gpioHardwarePWM(MOTOR1_CTL_PIN, 0, 500000);
+    gpioHardwarePWM(MOTOR2_CTL_PIN, 0, 500000);
+    i2cClose(i2c_handle);
+    gpioTerminate();
+    return 0;
 }
 
 void sigint_handler(int signum)
 {
-  stop = 1;
+    stop = 1;
 }

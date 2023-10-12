@@ -69,16 +69,34 @@
 # You will need to have gcov and gcovr both installed to make it work.
 # For more information on these options, see docs in plugins/gcov
 :gcov:
+  :utilities:
+    - gcovr
   :reports:
     - HtmlDetailed
   :gcovr:
     :html_medium_threshold: 75
     :html_high_threshold: 90
 
-#:tools:
-# Ceedling defaults to using gcc for compiling, linking, etc.
-# As [:tools] is blank, gcc will be used (so long as it's in your system path)
-# See documentation to configure a given toolchain for use
+:tools:
+  :test_compiler:
+    :executable: gcc
+    :arguments:
+    - -Wall
+    - -Wextra
+    - -Wpedantic
+    - -I"$": COLLECTION_PATHS_TEST_TOOLCHAIN_INCLUDE #expands to -I search paths
+    - -I"$": COLLECTION_PATHS_TEST_SUPPORT_SOURCE_INCLUDE_VENDOR #expands to -I search paths
+    - -D$: COLLECTION_DEFINES_TEST_AND_VENDOR #expands to all -D defined symbols
+    - -c ${1}
+    - -o ${2}
+  :test_linker:
+    :executable: gcc
+    :arguments:
+    - ${1}
+    - -lm
+    - -lcurses
+    - -o ${2}
+
 
 # LIBRARIES
 # These libraries are automatically injected into the build process. Those specified as
@@ -98,4 +116,5 @@
   :enabled:
     - stdout_pretty_tests_report
     - module_generator
+    - gcov
 ...

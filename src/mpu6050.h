@@ -5,6 +5,7 @@
 
 // MPU6050 REGS
 #define MPU6050_REG_SMPRT_DIV		0x19
+#define MPU6050_REG_CONFIG		0x1A
 #define MPU6050_REG_GYRO_CONFIG		0x1B
 #define MPU6050_REG_ACCEL_CONFIG	0x1C
 #define MPU6050_REG_ACCEL_XOUT_H	0x3B
@@ -38,12 +39,11 @@
 #define MPU6050_GYROCFG_1000	(0x02 << 3)
 #define MPU6050_GYROCFG_2000	(0x03 << 3)
 
-#warning do proper calibration later using code of Jeff Rowberg
 // MPU6050 CALIBRATION OFFSETS
 #define MPU6050_ACCEL_X_OFFSET  -153
-#define MPU6050_ACCEL_Y_OFFSET	182
-#define MPU6050_ACCEL_Z_OFFSET	-948
-#define MPU6050_GYRO_X_OFFSET	51
+#define MPU6050_ACCEL_Y_OFFSET	753
+#define MPU6050_ACCEL_Z_OFFSET	-2112
+#define MPU6050_GYRO_X_OFFSET	23
 #define MPU6050_GYRO_Y_OFFSET	-31
 #define MPU6050_GYRO_Z_OFFSET	151
 
@@ -53,7 +53,7 @@
 #define MPU6050_ACCEL_8G_LSB	4096
 #define MPU6050_ACCEL_16G_LSB	2048
 
-#define ACCEL_GYRO_BUF_RD_BYTES 14
+#define ACCEL_GYRO_BUF_RD_BYTES 8
 #define ACCEL_X_OUT_H	0
 #define ACCEL_X_OUT_L	1
 #define ACCEL_Y_OUT_H	2
@@ -69,7 +69,13 @@
 #define GYRO_Z_OUT_H	12
 #define GYRO_Z_OUT_L	13
 
+// Application Code Macros
+#define RAD_TO_DEG	57.298578
+#define ANGLE_SET_PT    -0.5
+#define TUNE_SEC        5
+
 int mpu6050_init(void);
+uint8_t tune_mpu6050(int i2c_handle, char *acc_gyro_buf, float *y_acc_avg_offset, float *z_acc_avg_offset, float *x_gyro_avg_offset);
 
 #endif
 
