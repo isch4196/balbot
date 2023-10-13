@@ -68,7 +68,7 @@ int main(int argc, char *argv[])
 
     pid_t pid = fork();
     if (0 == pid) { // child
-	execl("/bin/libcamera-vid", "libcamera-vid", "-n", "-t", "0", "--inline", "--width", "640", "--height", "480", "--framerate", "30", "-o", "udp://000.0.00.00:3900", (char*)0);
+	execl("/usr/bin/libcamera-vid", "libcamera-vid", "-n", "-t", "0", "--inline", "--width", "640", "--height", "480", "--framerate", "10", "-o", "udp://000.0.00.00:3900", (char*)0);
     } else if (pid > 0) { // parent
 	goto parent_process;
     } else {
