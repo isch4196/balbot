@@ -68,7 +68,7 @@ int main(int argc, char *argv[])
 
     pid_t pid = fork();
     if (0 == pid) { // child
-	int ret = execl("/bin/libcamera-vid", "libcamera-vid", "-n", "-t", "0", "--inline", "--width", "640", "--height", "480", "--framerate", "30", "-o", "udp://192.168.1.75:3900", (char*)0);
+	int ret = execl("/usr/bin/libcamera-vid", "libcamera-vid", "-n", "-t", "0", "--inline", "--width", "640", "--height", "480", "--framerate", "30", "-o", "udp://192.168.1.75:3900", (char*)0);
 	printf("FORK CHILD: %d\n", ret);
 	perror("child forkerror");
     } else if (pid > 0) { // parent
