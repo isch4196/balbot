@@ -21,7 +21,7 @@
 #include "PID-library/pid.h"
 #include "server.h"
 
-#define TEST_PID 1
+#define TEST_PID 0
 
 static volatile sig_atomic_t stop;
 
@@ -68,7 +68,7 @@ int main(int argc, char *argv[])
 
     pid_t pid = fork();
     if (0 == pid) { // child
-	execl("/usr/bin/libcamera-vid", "libcamera-vid", "-n", "-t", "0", "--inline", "--width", "640", "--height", "480", "--framerate", "10", "-o", "udp://000.0.00.00:3900", (char*)0);
+	execl("/usr/bin/libcamera-vid", "libcamera-vid", "-n", "-t", "0", "--inline", "--width", "640", "--height", "480", "--framerate", "10", "-o", "udp://000.00.0.00:3900", (char*)0);
     } else if (pid > 0) { // parent
 	goto parent_process;
     } else {
